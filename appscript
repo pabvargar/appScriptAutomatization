@@ -1,0 +1,197 @@
+function convertCsvToSheet() {
+  // Define the source folder where the CSV files are located (use folder ID)
+  var sourceFolderId = 'abc';  // ID of the SourceData folder
+  var sourceFolder = DriveApp.getFolderById(sourceFolderId);
+  
+  // Define the destination folder where the converted sheets will go (use folder ID)
+  var destinationFolderId = 'def';  // Replace with the ID of the destination folder
+  var destinationFolder = DriveApp.getFolderById(destinationFolderId);
+
+  // Define the folder where the original CSV files will be moved after conversion
+  // Get the current month and year to create a dynamic folder name
+  var currentDate = new Date();
+  currentDate.setMonth(currentDate.getMonth() - 1); // Get 1 month before current date, to match csv date 
+  var monthName = currentDate.toLocaleString('default', { month: 'long' });  // e.g., "October"
+  var year = currentDate.getFullYear();
+  var folderName = monthName + " " + year;  // e.g., "October 2024"
+
+  // Define the destination spreadsheets by its ID
+  
+  var mercuryDestinationSpreadsheetId = '123';
+  var mercuryDestinationSpreadsheet = SpreadsheetApp.openById(mercuryDestinationSpreadsheetId);
+  if (mercuryDestinationSpreadsheet) {Logger.log("Successfully opened Mercury spreadsheet.");
+  } else { Logger.log("Failed to open Mercury spreadsheet.");}
+
+  var mercurySheet = mercuryDestinationSpreadsheet.getSheetByName("carga_datos");
+
+  var relayDestinationSpreadsheetId = '456';
+  var relayDestinationSpreadsheet = SpreadsheetApp.openById(relayDestinationSpreadsheetId);
+  if (relayDestinationSpreadsheet) {Logger.log("Successfully opened Relay spreadsheet.");
+  } else { Logger.log("Failed to open Relay spreadsheet.");}
+  
+  var relaySheet = relayDestinationSpreadsheet.getSheetByName("carga_datos");
+ 
+  // Check if the folder for the current month already exists
+  var archiveFolder = getOrCreateArchiveFolder(folderName);
+  
+  // Get all files in the source folder that are of type CSV
+  var files = sourceFolder.getFilesByType(MimeType.CSV);
+  
+  // Loop through all CSV files
+  while (files.hasNext()) {
+    var file = files.next();
+    
+    // Open the CSV file as a blob
+    var csvBlob = file.getBlob();
+    
+    // Parse the CSV data
+    var csvData = Utilities.parseCsv(csvBlob.getDataAsString());
+    
+    // Check structure and add data to Mercury_data_model
+    if (isMatchingCsvStructureMercury(csvData)) {
+      appendCsvDataToSheet(mercurySheet, csvData);
+
+      // Move the original CSV file to the archive folder
+      archiveFolder.addFile(file);
+      sourceFolder.removeFile(file);
+      
+      /*
+      // Add data to Mercury model
+      appendCsvDataToSheet(destinationSheet, csvData);
+
+      // Create a new spreadsheet from the CSV data
+      var spreadsheetName = "mercury_data_" + monthName + "_" + year;
+      var spreadsheet = SpreadsheetApp.create(spreadsheetName);
+      var sheet = spreadsheet.getActiveSheet();
+    
+      // Paste the CSV data into the spreadsheet
+      sheet.getRange(1, 1, csvData.length, csvData[0].length).setValues(csvData);
+    
+      // Move the newly created spreadsheet to the destination folder
+      var spreadsheetFile = DriveApp.getFileById(spreadsheet.getId());
+      destinationFolder.addFile(spreadsheetFile);
+      DriveApp.getRootFolder().removeFile(spreadsheetFile);  // Remove from root folder
+
+      // Move the original CSV file to the archive folder
+      archiveFolder.addFile(file);
+      sourceFolder.removeFile(file);  // Remove the file from the source folder
+      */
+    } else {
+      Logger.log("CSV structure does not match the expected Mercury format.");
+    }
+    // Check structure and add data to Mercury_data_model
+    if (isMatchingCsvStructureRelay(csvData)) {
+      appendCsvDataToSheet(relaySheet, csvData);
+
+      // Move the original CSV file to the archive folder
+      archiveFolder.addFile(file);
+      sourceFolder.removeFile(file);
+    } else {
+      Logger.log("CSV structure does not match the expected Relay format.");
+    }
+
+  }
+  
+}
+
+function getOrCreateArchiveFolder(folderName) {
+  //Archive folder
+  var archivedParentFolderId = '17cP5HDGXpu8J2cQFcqBSd4cLZj892iQ0';
+  var archiveParentFolder = DriveApp.getFolderById(archivedParentFolderId);
+
+  // Check if the folder with the current month name already exists
+  var folders = archiveParentFolder.getFoldersByName(folderName);
+  
+  if (folders.hasNext()) {
+    // If the folder already exists, return it
+    return folders.next();
+  } else {
+    // If the folder does not exist, create a new folder in the root directory
+    return archiveParentFolder.createFolder(folderName);
+  }
+}
+
+// Mercury structure
+function isMatchingCsvStructureMercury(data) { 
+  // Define the expected headers
+  var expectedHeaders = ["Date (UTC)", 
+    "Description", 
+    "Amount", 
+    "Status", 
+    "Source Account", 
+    "Bank Description", 
+    "Reference", 
+    "Note", 
+    "Last Four Digits", 
+    "Name On Card", 
+    "Category", 
+    "GL Code", 
+    "Timestamp", 
+    "Original Currency", 
+    "Check Number"]  // Mercury headers
+  var actualHeaders = data[0];
+  
+  // Calculate the maximum number of mismatches allowed (10% of the total headers)
+  var allowedMismatches = Math.floor(expectedHeaders.length * 0.1);
+  var mismatches = 0;
+  
+  // Iterate through the expected headers and count mismatches
+  for (var i = 0; i < expectedHeaders.length; i++) {
+    if (expectedHeaders[i] !== actualHeaders[i]) {
+      mismatches++;
+      // If mismatches exceed the allowed limit, return false
+      if (mismatches > allowedMismatches) {
+        return false;
+      }
+    }
+  }
+  
+  return true;
+}
+
+// Relay structure
+function isMatchingCsvStructureRelay(data) { 
+  // Define the expected headers
+  var expectedHeaders = ["Date", 
+    "Payee", 
+    "Transaction Type", 
+    "Description", 
+    "Reference", 
+    "Status", 
+    "Amount", 
+    "Currency", 
+    "Balance"]  // Relay headers
+  var actualHeaders = data[0];
+  
+  // Calculate the maximum number of mismatches allowed (10% of the total headers)
+  var allowedMismatches = Math.floor(expectedHeaders.length * 0.1);
+  var mismatches = 0;
+  
+  // Iterate through the expected headers and count mismatches
+  for (var i = 0; i < expectedHeaders.length; i++) {
+    if (expectedHeaders[i] !== actualHeaders[i]) {
+      mismatches++;
+      // If mismatches exceed the allowed limit, return false
+      if (mismatches > allowedMismatches) {
+        return false;
+      }
+    }
+  }
+  
+  return true;
+}
+
+// Helper function to append CSV data to destination sheet
+function appendCsvDataToSheet(destinationSheet, csvData) {
+  try {
+    var dataToAppend = csvData.slice(1);  // Remove header row
+    var firstEmptyRow = destinationSheet.getLastRow() + 1;
+    
+    Logger.log("Appending data at row: " + firstEmptyRow);
+    Logger.log("Data to append: " + JSON.stringify(dataToAppend));
+
+    destinationSheet.getRange(firstEmptyRow, 1, dataToAppend.length, dataToAppend[0].length).setValues(dataToAppend);
+  } catch (error) {
+    Logger.log("Error appending data: " + error.message);
+  }
+}
