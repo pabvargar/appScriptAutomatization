@@ -1,11 +1,15 @@
-function convertCsvToSheet() {
-  // Define the source folder where the CSV files are located (use folder ID)
-  var sourceFolderId = 'abc';  // ID of the SourceData folder
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Tik&Reel")
+    .addItem("Paso 1: Pre-carga de datos", "cargaDeDatos")
+    .addItem("Paso 2: Carga final de datos", "cargaFinalDeDatos")
+    .addToUi();
+}
+
+function cargaDeDatos() {
+  // Define the source folder where the CSV files are located
+  var sourceFolderId = '14lzVGrfqQSS2_JbdnZAyhHHhaQ06XJXD';  // ID of the SourceData folder
   var sourceFolder = DriveApp.getFolderById(sourceFolderId);
-  
-  // Define the destination folder where the converted sheets will go (use folder ID)
-  var destinationFolderId = 'def';  // Replace with the ID of the destination folder
-  var destinationFolder = DriveApp.getFolderById(destinationFolderId);
 
   // Define the folder where the original CSV files will be moved after conversion
   // Get the current month and year to create a dynamic folder name
@@ -14,84 +18,190 @@ function convertCsvToSheet() {
   var monthName = currentDate.toLocaleString('default', { month: 'long' });  // e.g., "October"
   var year = currentDate.getFullYear();
   var folderName = monthName + " " + year;  // e.g., "October 2024"
-
-  // Define the destination spreadsheets by its ID
   
-  var mercuryDestinationSpreadsheetId = '123';
-  var mercuryDestinationSpreadsheet = SpreadsheetApp.openById(mercuryDestinationSpreadsheetId);
+  /*
+  var mercurySheet = openDataModelSheet("Mercury", "1mvF-zIuBRGPpSJKZ0IdfsX5_7ePgGkW7BQlUx3KfSds");
+  var relaySheet = openDataModelSheet("Relay", "13PSPdaSDciKS9YKxtPdiBKDYNE__qT6ay49dXZzH_-w");
+  var hotmartSheet = openDataModelSheet("Hotmart", "1sIPWniCUOZhtVrpJyM2bKUYHBc3tKLGyi_CK9F3HGOA");
+  var wiseUSDSheet = openDataModelSheet("WiseUSD", "1x65PFYjETtkNsVxGarUK58MTnIWHmqCsXryNwnw-L4E");
+  var wiseEURSheet = openDataModelSheet("WiseEUR", "1F0EGCq8sQJ3nDzQBvAbxnjgA1GI69yF1OOESo9IKC1U");
+
+  */
+  // Open Mercury spreadsheets
+  var mercurySpreadsheetId = '1mvF-zIuBRGPpSJKZ0IdfsX5_7ePgGkW7BQlUx3KfSds';
+  var mercuryDestinationSpreadsheet = SpreadsheetApp.openById(mercurySpreadsheetId);
   if (mercuryDestinationSpreadsheet) {Logger.log("Successfully opened Mercury spreadsheet.");
   } else { Logger.log("Failed to open Mercury spreadsheet.");}
 
   var mercurySheet = mercuryDestinationSpreadsheet.getSheetByName("carga_datos");
-
-  var relayDestinationSpreadsheetId = '456';
-  var relayDestinationSpreadsheet = SpreadsheetApp.openById(relayDestinationSpreadsheetId);
+  
+  // Open Relay spreadsheets
+  var relaySpreadsheetId = '13PSPdaSDciKS9YKxtPdiBKDYNE__qT6ay49dXZzH_-w';
+  var relayDestinationSpreadsheet = SpreadsheetApp.openById(relaySpreadsheetId);
   if (relayDestinationSpreadsheet) {Logger.log("Successfully opened Relay spreadsheet.");
   } else { Logger.log("Failed to open Relay spreadsheet.");}
   
   var relaySheet = relayDestinationSpreadsheet.getSheetByName("carga_datos");
+
+  // Open Hotmart spreadsheets
+  var hotmartSpreadsheetId = '1sIPWniCUOZhtVrpJyM2bKUYHBc3tKLGyi_CK9F3HGOA';
+  var hotmartDestinationSpreadsheet = SpreadsheetApp.openById(hotmartSpreadsheetId);
+  if (hotmartDestinationSpreadsheet) {Logger.log("Successfully opened Hotmart spreadsheet.");
+  } else { Logger.log("Failed to open Hotmart spreadsheet.");}
+  
+  var hotmartSheet = hotmartDestinationSpreadsheet.getSheetByName("carga_datos");
+
+  // Open WiseUSD spreadsheets
+  var wiseUSDSpreadsheetId = '1x65PFYjETtkNsVxGarUK58MTnIWHmqCsXryNwnw-L4E';
+  var wiseUSDDestinationSpreadsheet = SpreadsheetApp.openById(wiseUSDSpreadsheetId);
+  if (wiseUSDDestinationSpreadsheet) {Logger.log("Successfully opened wiseUSD spreadsheet.");
+  } else { Logger.log("Failed to open wiseUSD spreadsheet.");}
+  
+  var wiseUSDSheet = wiseUSDDestinationSpreadsheet.getSheetByName("carga_datos");
  
+  // Open WiseEUR spreadsheets
+  var wiseEURSpreadsheetId = '1F0EGCq8sQJ3nDzQBvAbxnjgA1GI69yF1OOESo9IKC1U';
+  var wiseEURDestinationSpreadsheet = SpreadsheetApp.openById(wiseEURSpreadsheetId);
+  if (wiseEURDestinationSpreadsheet) {Logger.log("Successfully opened wiseEUR spreadsheet.");
+  } else { Logger.log("Failed to open wiseEUR spreadsheet.");}
+  
+  var wiseEURSheet = wiseEURDestinationSpreadsheet.getSheetByName("carga_datos");
+  
+
   // Check if the folder for the current month already exists
   var archiveFolder = getOrCreateArchiveFolder(folderName);
   
   // Get all files in the source folder that are of type CSV
-  var files = sourceFolder.getFilesByType(MimeType.CSV);
+    var files = sourceFolder.getFiles();
   
   // Loop through all CSV files
   while (files.hasNext()) {
     var file = files.next();
     
-    // Open the CSV file as a blob
-    var csvBlob = file.getBlob();
-    
-    // Parse the CSV data
-    var csvData = Utilities.parseCsv(csvBlob.getDataAsString());
+    var mimeType = file.getMimeType(); 
+    var fileName = file.getName();
+
+    var data2D;
+
+    if (mimeType === MimeType.CSV) {
+      // Handle CSV Mercury, Relay, WiseUSD, WiseEUR
+      var csvBlob = file.getBlob();
+      data2D = Utilities.parseCsv(csvBlob.getDataAsString());
+
+    } else if (mimeType === "application/vnd.ms-excel") {
+      // Handle XLS Hotmart
+      var convertedSheet = convertXlsToGoogleSheet(file);
+      if (!convertedSheet) {
+        Logger.log("Failed to convert XLS file: " + fileName);
+        continue;
+      }
+      // Read all rows from the first sheet of the converted spreadsheet
+      var sheetData = convertedSheet.getDataRange().getValues();
+      data2D = sheetData;
+
+      // Remove the temporary converted file
+      DriveApp.getFileById(convertedSheet.getParent().getId()).setTrashed(true);
+
+    } else {
+      Logger.log("Skipping file (not CSV or XLS): " + fileName + " [MimeType=" + mimeType + "]");
+      continue;
+    }
     
     // Check structure and add data to Mercury_data_model
-    if (isMatchingCsvStructureMercury(csvData)) {
-      appendCsvDataToSheet(mercurySheet, csvData);
-
-      // Move the original CSV file to the archive folder
-      archiveFolder.addFile(file);
-      sourceFolder.removeFile(file);
-      
-      /*
-      // Add data to Mercury model
-      appendCsvDataToSheet(destinationSheet, csvData);
-
-      // Create a new spreadsheet from the CSV data
-      var spreadsheetName = "mercury_data_" + monthName + "_" + year;
-      var spreadsheet = SpreadsheetApp.create(spreadsheetName);
-      var sheet = spreadsheet.getActiveSheet();
-    
-      // Paste the CSV data into the spreadsheet
-      sheet.getRange(1, 1, csvData.length, csvData[0].length).setValues(csvData);
-    
-      // Move the newly created spreadsheet to the destination folder
-      var spreadsheetFile = DriveApp.getFileById(spreadsheet.getId());
-      destinationFolder.addFile(spreadsheetFile);
-      DriveApp.getRootFolder().removeFile(spreadsheetFile);  // Remove from root folder
-
-      // Move the original CSV file to the archive folder
-      archiveFolder.addFile(file);
-      sourceFolder.removeFile(file);  // Remove the file from the source folder
-      */
+    if (isMatchingCsvStructureMercury(data2D)) {
+      appendCsvDataToSheet(mercurySheet, data2D);
+      archiveFile(file, archiveFolder, sourceFolder);
+      continue;
     } else {
       Logger.log("CSV structure does not match the expected Mercury format.");
     }
     // Check structure and add data to Mercury_data_model
-    if (isMatchingCsvStructureRelay(csvData)) {
-      appendCsvDataToSheet(relaySheet, csvData);
-
-      // Move the original CSV file to the archive folder
-      archiveFolder.addFile(file);
-      sourceFolder.removeFile(file);
+    if (isMatchingCsvStructureRelay(data2D)) {
+      appendCsvDataToSheet(relaySheet, data2D);
+      archiveFile(file, archiveFolder, sourceFolder);
+      continue;
     } else {
       Logger.log("CSV structure does not match the expected Relay format.");
     }
 
+    // Check structure and add data to Hotmart_data_model
+    if (isMatchingCsvStructureHotmart(data2D)) {
+      appendCsvDataToSheet(hotmartSheet, data2D);
+      archiveFile(file, archiveFolder, sourceFolder);
+      continue;
+    } else {
+      Logger.log("XLS structure does not match the expected Hotmart format.");
+    }
+    
+    // Check structure and add data to WiseUSD_data_model
+    if (isMatchingCsvStructureWiseUSD(data2D)) {
+      appendCsvDataToSheet(wiseUSDSheet, data2D);
+      archiveFile(file, archiveFolder, sourceFolder);
+      continue;
+    } else {
+      Logger.log("CSV structure does not match the expected x format.");
+    }
+    
+    // Check structure and add data to WiseEUR_data_model
+    if (isMatchingCsvStructureWiseEUR(data2D)) {
+      appendCsvDataToSheet(wiseEURSheet, data2D);
+      archiveFile(file, archiveFolder, sourceFolder);
+      continue;
+    } else {
+      Logger.log("CSV structure does not match the expected x format.");
+    }
   }
-  
+
+  // Mercury.consolidacion_datos -> base_datos.final
+  syncConsolidatedToFinal(
+    mercurySpreadsheetId,  // Mercury ID
+    'consolidacion_datos',       
+    'carga_datos',           
+    '1qJblRmNLGefKfOL6CCxqCV1XYHdj3bwG4pH34ULln4U',      
+    'final',                         
+    'MERCURY_LAST_ROW',               // ScriptProperties key
+    'Mercury'
+  );
+  // Relay.consolidacion_datos -> base_datos.final
+  syncConsolidatedToFinal(
+    relaySpreadsheetId,    // Relay ID
+    'consolidacion_datos',  
+    'carga_datos',                 
+    '1qJblRmNLGefKfOL6CCxqCV1XYHdj3bwG4pH34ULln4U',       
+    'final',                          
+    'RELAY_LAST_ROW',               // ScriptProperties key
+    'Relay'
+  );
+  //Hotmart.consolidacion_datos -> base_datos.final
+  syncConsolidatedToFinal(
+    hotmartSpreadsheetId,    // Hotmart ID
+    'consolidacion_datos',      
+    'carga_datos',             
+    '1qJblRmNLGefKfOL6CCxqCV1XYHdj3bwG4pH34ULln4U',       
+    'final',                          
+    'HOTMART_LAST_ROW',               // ScriptProperties key
+    'Hotmart'
+  );
+  // WiseUSD.consolidacion_datos -> base_datos.final
+  syncConsolidatedToFinal(
+    wiseUSDSpreadsheetId,    // WiseUSD ID
+    'consolidacion_datos',        
+    'carga_datos',           
+    '1qJblRmNLGefKfOL6CCxqCV1XYHdj3bwG4pH34ULln4U',     
+    'final',                          
+    'WISEUSD_LAST_ROW',               // ScriptProperties key
+    'WiseUSD'
+  );
+  // WiseEUR.consolidacion_datos -> base_datos.final
+  syncConsolidatedToFinal(
+    wiseEURSpreadsheetId,    // WiseEUR ID
+    'consolidacion_datos',
+    'carga_datos',                   
+    '1qJblRmNLGefKfOL6CCxqCV1XYHdj3bwG4pH34ULln4U',     
+    'final',                          
+    'WISEEUR_LAST_ROW',               // ScriptProperties key
+    'WiseEUR'                  
+  );
 }
 
 function getOrCreateArchiveFolder(folderName) {
@@ -145,7 +255,7 @@ function isMatchingCsvStructureMercury(data) {
       }
     }
   }
-  
+  Logger.log("CSV structure matches Mercury format.")
   return true;
 }
 
@@ -177,7 +287,192 @@ function isMatchingCsvStructureRelay(data) {
       }
     }
   }
+  Logger.log("CSV structure matches Relay format.")
+  return true;
+}
+
+// Hotmart structure
+function isMatchingCsvStructureHotmart(data) { 
+  // Define the expected headers
+  var expectedHeaders =  [
+    "Nombre del Producto",
+    "Nombre del Productor",
+    "Documento del Productor",
+    "Nombre del Afiliado",
+    "Transacción",
+    "Método de Pago",
+    "Origen",
+    "Moneda",
+    "Precio del Producto",
+    "Moneda", 
+    "Precio de la Oferta",
+    "Tasa de cambio",
+    "Moneda",
+    "Precio Original",
+    "Número de la Cuota",
+    "Pago recurrente",
+    "Fecha de venta",
+    "Fecha de Confirmación",
+    "Estatus",
+    "Nombre",
+    "Documento",
+    "Email",
+    "Código de área",
+    "Teléfono",
+    "Código Postal",
+    "Ciudad",
+    "Comunidad Autónoma/Departamento/Estado/Provincia/Región",
+    "Barrio",
+    "País",
+    "Dirección",
+    "Número",
+    "Apto./piso/casa",
+    "Clave",
+    "Código del Producto",
+    "Código de la Afiliación",
+    "Código de la Oferta",
+    "Origen de Checkout",
+    "Forma de pago",
+    "Período Gratis",
+    "Tiene coproducción",
+    "Origen de la Comisión",
+    "Precio Total",
+    "Forma de pago oferta",
+    "Tasa de Cambio Real",
+    "Precio Total Convertido",
+    "Cantidad de ítems",
+    "Oferta de upgrade",
+    "Cupón",
+    "Moneda",
+    "Valor de la Comisión Convertida",
+    "Tasa de Cambio de la Comisión",
+    "Fecha de vencimiento",
+    "Instagram",
+    "Origen de la venta",
+    "Moneda de la Comisión Generada",
+    "Valor de la Comisión Generada",
+    "Código del Suscriptor(a)",
+    "Factura"]; // Hotmart headers
+
+  var actualHeaders = data[0];
   
+  // Calculate the maximum number of mismatches allowed (10% of the total headers)
+  var allowedMismatches = Math.floor(expectedHeaders.length * 0.1);
+  var mismatches = 0;
+  
+  // Iterate through the expected headers and count mismatches
+  for (var i = 0; i < expectedHeaders.length; i++) {
+    if (expectedHeaders[i] !== actualHeaders[i]) {
+      mismatches++;
+      // If mismatches exceed the allowed limit, return false
+      if (mismatches > allowedMismatches) {
+        return false;
+      }
+    }
+  }
+  Logger.log("CSV structure matches Hotmart format.")
+  return true;
+}
+
+// WiseUSD structure
+function isMatchingCsvStructureWiseUSD(data) {
+  
+  var expectedHeaders = [
+  "TransferWise ID",
+  "Date",
+  "Amount",
+  "Currency",
+  "Description",
+  "Payment Reference",
+  "Running Balance",
+  "Exchange From",
+  "Exchange To",
+  "Exchange Rate",
+  "Payer Name",
+  "Payee Name",
+  "Payee Account Number",
+  "Merchant",
+  "Card Last Four Digits",
+  "Card Holder Full Name",
+  "Attachment",
+  "Note",
+  "Total fees",
+  "Exchange To Amount"
+];
+  var actualHeaders = data[0];
+  
+  var allowedMismatches = Math.floor(expectedHeaders.length * 0.1);
+  var mismatches = 0;
+  
+  for (var i = 0; i < expectedHeaders.length; i++) {
+    if (expectedHeaders[i] !== actualHeaders[i]) {
+      mismatches++;
+      if (mismatches > allowedMismatches) {
+        return false;
+      }
+    }
+  }
+  
+  // 3) Check whether USD is the currency in teh first row
+  if (data.length > 1) {
+    if (data[1].length > 3) {
+      if (data[1][3] !== "USD") {
+        return false;
+      }
+    }
+  }
+  Logger.log("CSV structure matches WiseUSD format.")
+  return true;
+}
+
+// WiseEUR structure
+function isMatchingCsvStructureWiseEUR(data) {
+  
+  var expectedHeaders = [
+  "TransferWise ID",
+  "Date",
+  "Amount",
+  "Currency",
+  "Description",
+  "Payment Reference",
+  "Running Balance",
+  "Exchange From",
+  "Exchange To",
+  "Exchange Rate",
+  "Payer Name",
+  "Payee Name",
+  "Payee Account Number",
+  "Merchant",
+  "Card Last Four Digits",
+  "Card Holder Full Name",
+  "Attachment",
+  "Note",
+  "Total fees",
+  "Exchange To Amount"
+];
+  var actualHeaders = data[0];
+  
+  var allowedMismatches = Math.floor(expectedHeaders.length * 0.1);
+  var mismatches = 0;
+  
+  for (var i = 0; i < expectedHeaders.length; i++) {
+    if (expectedHeaders[i] !== actualHeaders[i]) {
+      mismatches++;
+      if (mismatches > allowedMismatches) {
+        return false;
+      }
+    }
+  }
+  
+  // 3) Check whether EUR is the currency in the first row
+  if (data.length > 1) {
+    if (data[1].length > 3) {
+      if (data[1][3] !== "EUR") {
+        return false;
+      }
+    }
+  }
+  Logger.log("CSV structure matches WiseEUR format.")
   return true;
 }
 
@@ -188,10 +483,145 @@ function appendCsvDataToSheet(destinationSheet, csvData) {
     var firstEmptyRow = destinationSheet.getLastRow() + 1;
     
     Logger.log("Appending data at row: " + firstEmptyRow);
-    Logger.log("Data to append: " + JSON.stringify(dataToAppend));
+    //Logger.log("Data to append: " + JSON.stringify(dataToAppend));
 
     destinationSheet.getRange(firstEmptyRow, 1, dataToAppend.length, dataToAppend[0].length).setValues(dataToAppend);
   } catch (error) {
     Logger.log("Error appending data: " + error.message);
   }
+}
+
+function syncConsolidatedToFinal(sourceSpreadsheetId, consolidatedSheetName,cargaDatosSheetName, finalSpreadsheetId, finalSheetName, scriptPropertyKey, sourceName) {
+  var scriptProps = PropertiesService.getScriptProperties();
+
+  // Open the source “consolidated” sheet
+  var sourceSS = SpreadsheetApp.openById(sourceSpreadsheetId);
+  var consolidatedSheet = sourceSS.getSheetByName(consolidatedSheetName);
+  if (!consolidatedSheet) {
+    Logger.log("No sheet named '" + sourceName+ "' '"+ consolidatedSheetName + "' in source spreadsheet.");
+    return;
+  }
+
+  // Open the target “final” sheet
+  var finalSS = SpreadsheetApp.openById(finalSpreadsheetId);
+  var finalSheet = finalSS.getSheetByName(finalSheetName);
+  if (!finalSheet) {
+    Logger.log("No sheet named '" +finalSheetName + "' in final spreadsheet.");
+    return;
+  }
+  
+  // 1) Get the last row we already processed
+  var lastCopiedRowStr = scriptProps.getProperty(scriptPropertyKey) || '1';
+  var lastCopiedRow = parseInt(lastCopiedRowStr, 10);
+  var sourceLastRow = sourceSS.getSheetByName(cargaDatosSheetName).getLastRow();
+  Logger.log(sourceName + "sourcelastRow: " + sourceLastRow);
+  if (sourceLastRow <= lastCopiedRow) {
+    Logger.log("No new rows in '" + sourceName + "' '" + consolidatedSheetName + "' to copy. " +
+               "(Last row: " + sourceLastRow + ", last copied: " + lastCopiedRow + ")");
+    return;
+  }
+  
+  // 2) Read data from “consolidated” from (lastCopiedRow+1) down
+  var sourceRange = consolidatedSheet.getRange(
+    lastCopiedRow + 1,        // start row
+    1,                        // start column
+    sourceLastRow - lastCopiedRow, // number of rows
+    consolidatedSheet.getLastColumn()
+  );
+  
+  var sourceData = sourceRange.getValues();
+
+  // 3) Build a set of existing row "keys" in the final sheet for dedup
+  //    We'll read the entire "final" sheet into memory once.
+  var finalDataRange = finalSheet.getDataRange();
+  var finalData = finalDataRange.getValues();
+  var existingKeys = {};
+  for (var i = 1; i < finalData.length; i++) {
+    var row = finalData[i];
+    var key = buildRowKey(row); 
+    existingKeys[key] = true;
+  }
+  
+  // 4) Filter out only truly new rows
+  var newRows = [];
+  for (var r = 0; r < sourceData.length; r++) {
+    var row = sourceData[r];
+    var key = buildRowKey(row);
+    if (!existingKeys[key]) {
+      // This row does not exist in final; let's copy it
+      newRows.push(row);
+    }
+  }
+  
+  // 5) Append new rows to final (if any)
+  if (newRows.length > 0) {
+    var nextEmptyRowInFinal = finalSheet.getLastRow() + 1;
+    finalSheet.getRange(
+      nextEmptyRowInFinal, 
+      1, 
+      newRows.length, 
+      newRows[0].length
+    ).setValues(newRows);
+    
+    Logger.log("Appended " + newRows.length + " new rows from '" + sourceName+ "' to '"+ finalSheetName + "' tab.");
+  } else {
+    Logger.log("No truly new rows found for '" + sourceName+ "' '" + consolidatedSheetName + "'.");
+  }
+  
+  // 6) Update the ScriptProperty for the new last row processed
+  scriptProps.setProperty(scriptPropertyKey, sourceLastRow.toString());
+}
+
+function buildRowKey(row) {
+  return row[8];
+}
+
+function convertXlsToGoogleSheet(file) {
+  try {
+    var fileId = file.getId();
+    
+    var resource = {
+      title: file.getName().replace(/\.xls$/i, ""),
+      mimeType: MimeType.GOOGLE_SHEETS
+    };
+    // This requires enabling "Drive API" in the Apps Script > Services
+    var newFile = Drive.Files.copy(resource, fileId);
+    
+    // Now open the newly created Google Sheet
+    var newSpreadsheet = SpreadsheetApp.openById(newFile.id);
+    var firstSheet = newSpreadsheet.getSheets()[0];
+    return firstSheet;
+  } catch (err) {
+    Logger.log("Error converting XLS: " + err);
+    return null;
+  }
+}
+
+function archiveFile(file, archiveFolder, sourceFolder) {
+  archiveFolder.addFile(file);
+  sourceFolder.removeFile(file);
+}
+
+function openDataModelSheet(sourceName, spreadsheetId) {
+  var ss;
+  try {
+    ss = SpreadsheetApp.openById(spreadsheetId);
+    Logger.log("Successfully opened " + sourceName + " spreadsheet (ID: " + spreadsheetId + ").");
+  } catch (e) {
+    Logger.log("Failed to open " + sourceName + " spreadsheet (ID: " + spreadsheetId + "): " + e);
+    return null;
+  }
+  
+  // Try to get the "carga_datos" sheet
+  var sheet = ss.getSheetByName("carga_datos");
+  if (!sheet) {
+    Logger.log("No 'carga_datos' sheet found in " + sourceName + " spreadsheet.");
+    return null;
+  }
+  
+  return sheet;
+}
+
+function cargaFinalDeDatos(){
+  Logger.log("Last Brower to win over");
 }
